@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Payment - RedStore</title>
+  <link rel="stylesheet" href="/HTML/MIS and E-bisuness/style.css" />
+  <style>
+    .payment-container {
+      max-width: 800px;
+      margin: 100px auto;
+      padding: 20px;
+      background: #f7f7f7;
+      border-radius: 10px;
+    }
+    .payment-method {
+      margin: 20px 0;
+    }
+    .payment-method input {
+      margin-right: 10px;
+    }
+    .order-summary {
+      margin: 20px 0;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+    }
+    .pay-btn {
+      background: #28a745;
+      padding: 12px 25px;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      float: right;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div class="payment-container">
+  <h2>Choose Payment Method</h2>
+
+  <div class="payment-method">
+    <label><input type="radio" name="payment" value="esewa" checked> Pay with eSewa</label><br>
+    <label><input type="radio" name="payment" value="khalti"> Pay with Khalti</label><br>
+    <label><input type="radio" name="payment" value="cod"> Cash on Delivery</label>
+  </div>
+
+  <div class="order-summary">
+    <h3>Order Summary</h3>
+    <p><strong>Product:</strong> RedStore Items</p>
+    <p><strong>Total:</strong> <span id="order-total">Loading...</span></p>
+  </div>
+
+  <button class="pay-btn" onclick="proceedToPayment()">Proceed to Payment</button>
+</div>
+
+<script>
+  const total = JSON.parse(localStorage.getItem("cart") || "[]").reduce((sum, item) => sum + item.price * item.quantity, 0);
+  document.getElementById("order-total").innerText = "Rs. " + total.toFixed(2);
+
+  function proceedToPayment() {
+    const method = document.querySelector('input[name="payment"]:checked').value;
+
+    if (method === "esewa") {
+      esewaPay(total);
+    } else if (method === "khalti") {
+      khaltiPay(total);
+    } else {
+      alert("Your order has been placed with Cash on Delivery!");
+      localStorage.removeItem("cart");
+      window.location.href = "index.html";
+    }
+  }
+
+  function esewaPay(amount) {
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = "https://rc.esewa.com.np/epay/main";
+    
+    const params = {
+      amt: amount.toFixed(2),
+      psc: 0,
+      pdc: 0,
+      txAmt: 0,
+      tAmt: amount.toFixed(2),
+      pid: "TEST1234",
+      scd: "EPAYTEST",
+      su: "http://localhost:5500/success.html",
+      fu: "http://localhost:5500/failure.html"
+    };
+
+    for (const key in params) {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = key;
+      input.value = params[key];
+      form.appendChild(input);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  function khaltiPay(amount) {
+    const config = {
+      publicKey: "test_public_key_dc74e7a7a2a4405b82b4cfcb62e3b2b5",
+      productIdentity: "1234567890",
+      productName: "RedStore Items",
+      productUrl: "http://localhost:5500/",
+      eventHandler: {
+        onSuccess(payload) {
+          alert("Payment Successful!");
+          console.log(payload);
+          localStorage.removeItem("cart");
+          window.location.href = "success.html";
+        },
+        onError(error) {
+          alert("Payment Failed!");
+          console.log(error);
+        },
+        onClose() {
+          console.log("Widget closed");
+        }
+      }
+    };
+
+    const checkout = new KhaltiCheckout(config);
+    checkout.show({ amount: amount * 100 }); // Amount in paisa
+  }
+</script>
+
+<script src="https://khalti.com/static/khalti-checkout.js"></script>
+</body>
+</html>
